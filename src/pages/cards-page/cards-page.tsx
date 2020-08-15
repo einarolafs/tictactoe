@@ -7,7 +7,7 @@ import './cards-page.scss'
 type ItemProps = {
   id: number
   onClick: (id: number) => void
-  children: React.ReactChildren | string
+  children: string
   checked: boolean
 }
 
@@ -16,25 +16,21 @@ const Item: React.FC<ItemProps> = ({ id, onClick, children, checked }: ItemProps
     onClick(id)
   }, [id, onClick])
 
-  const classes = classcat(['item', { checked }])
+  const classes = classcat(['item', { checked, [children]: children }])
 
-  return (
-    <span styleName={classes} onClick={handleClick}>
-      {children}
-    </span>
-  )
+  return <span styleName={classes} onClick={handleClick} />
 }
 
-type User = 'X' | '0' | null
+type User = 'x' | 'o' | null
 type BoardState = { id: number; checked: User }
 
 const checkLines = (lines: number[][], board: [{ id: number; checked: User }], user: User): number[] | boolean => {
   let foundLine: number[] | boolean = false
 
   lines.forEach((line) => {
-    const isRowChecked = line.every((id) => board[id - 1].checked === user)
+    const isLineChecked = line.every((id) => board[id - 1].checked === user)
 
-    if (isRowChecked) {
+    if (isLineChecked) {
       foundLine = line
     }
   })
@@ -46,7 +42,7 @@ const CardsPage: React.FC = () => {
   const [boardState, setBoardState] = useState<BoardState[]>(
     new Array(9).fill(null).map((_, index): BoardState => ({ id: index + 1, checked: null }))
   )
-  const [user, setUser] = useState<User>('X')
+  const [user, setUser] = useState<User>('x')
   const [lineChecked, setLineChecked] = useState<number[]>([0, 0, 0])
   const [gameOver, setGameOver] = useState<boolean>(false)
 
@@ -106,7 +102,7 @@ const CardsPage: React.FC = () => {
       checkStatus(newBoardState)
 
       setBoardState(newBoardState)
-      setUser(user === 'X' ? '0' : 'X')
+      setUser(user === 'x' ? 'o' : 'x')
     },
     [boardState, user, checkStatus, gameOver]
   )
