@@ -1,0 +1,5 @@
+# Ignore artifacts:
+build
+.vscdoe
+node_modules
+public

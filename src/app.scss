@@ -1,0 +1,14 @@
+@import "./color.scss";
+
+body {
+  margin: 20px;
+  background: #dee2e6ff;
+  color: $rich-black-fogra-29;
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+
+/* stylelint-disable-next-line selector-pseudo-class-no-unknown */
+:global(#root) {
+  display: flex;
+  justify-content: center;
+}
