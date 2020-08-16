@@ -1,5 +1,6 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions, promise/avoid-new */
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useState, useEffect } from 'react'
+// import Peer from 'peerjs'
 import classcat from 'classcat'
 
 import './cards-page.scss'
@@ -10,6 +11,9 @@ type ItemProps = {
   children: string
   checked: boolean
 }
+
+const circle = '\u2756'
+const ex = '\u2717'
 
 const Item: React.FC<ItemProps> = ({ id, onClick, children, checked }: ItemProps) => {
   const handleClick = useCallback(() => {
@@ -45,6 +49,19 @@ const CardsPage: React.FC = () => {
   const [user, setUser] = useState<User>('x')
   const [lineChecked, setLineChecked] = useState<number[]>([0, 0, 0])
   const [gameOver, setGameOver] = useState<boolean>(false)
+
+//  const peer = new Peer()
+
+  /* useEffect(() => {
+    const connection = peer.connect()
+
+    console.log(connection)
+
+    connection.on('data', (data) => {
+      // Will print 'hi!'
+      console.log(data)
+    })
+  }, [peer]) */
 
   const checkStatus = useCallback(
     (board) => {
@@ -107,11 +124,21 @@ const CardsPage: React.FC = () => {
     [boardState, user, checkStatus, gameOver]
   )
 
+  const userIcon = () => user === 'x' ? ex : circle
+
   return (
     <div>
-      {!gameOver && `Player ${user} turn`}
+      {!gameOver && (
+        <div styleName="player">
+          Player: <span styleName="icon">{userIcon()}</span>
+        </div>
+      )}
 
-      {gameOver && `Game Over, player ${user} won`}
+      {gameOver && (
+        <div styleName="game-over">
+          Game Over, winner is <span styleName="icon">{userIcon()}</span>
+        </div>
+      )}
 
       <div styleName="game">
         {boardState.map(({ id, checked }) => (
