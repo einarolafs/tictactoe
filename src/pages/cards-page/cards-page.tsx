@@ -49,38 +49,13 @@ const CardsPage: React.FC = () => {
   const [lineChecked, setLineChecked] = useState<number[]>([0, 0, 0])
   const [gameOver, setGameOver] = useState<boolean>(false)
 
-  const peerId = useRef<string>()
+  const [playerId, setPlayerId] = useState<string>()
 
+  const [peerId, setPeerId] = useState<string>()
+
+  const peer = useRef<any>()
   const peerConnection = useRef<any>()
-  const inputRef = useRef()
-
-  useEffect(() => {
-    peerConnection.current = new window.Peer()
-
-    peerConnection.current.on('open', (id: string) => {
-      console.log(id)
-      peerId.current = id
-    })
-
-    peerConnection.current.on('connection', (conn) => {
-      conn.on('open', function (data) {
-        conn.on('data', function (data) {
-          console.log('Received', data)
-        })
-      })
-    })
-  }, [])
-
-  const onPerrClick = useCallback(() => {
-    const connect = peerConnection.current.connect(inputRef.current.value)
-
-    connect.on('open', function() {
-      // Receive messages
-      connect.send('Hello!')
-    })
-
-    connect.send('Hello!')
-  }, [])
+  const inputRef = useRef<HTMLInputElement>()
 
   const checkStatus = useCallback(
     (board) => {
@@ -139,26 +114,64 @@ const CardsPage: React.FC = () => {
 
       setBoardState(newBoardState)
       setUser(user === 'x' ? 'o' : 'x')
+
+      peerConnection.current.send({ selected: id })
     },
     [boardState, user, checkStatus, gameOver]
   )
+
+  const makePeerConnection = useCallback(
+    (id) => {
+      peerConnection.current = peer.current.connect(id)
+      setPeerId(id)
+
+      peerConnection.current.on('open', () => {
+        peerConnection.current.send({ startGame: true, id: playerId })
+      })
+    },
+    [playerId]
+  )
+
+  useEffect(() => {
+    peer.current = new window.Peer()
+
+    peer.current.on('open', (id: string) => {
+      setPlayerId(id)
+    })
+
+    peer.current.on('connection', (conn: any) => {
+      conn.on('open', () => {
+        conn.on('data', (data: any) => {
+          if (data.id) {
+            makePeerConnection(data.id)
+          }
+          if (data.selected) {
+            handleClick(data.selected)
+          }
+        })
+      })
+    })
+  }, [])
+
+  const handlePerrClick = useCallback(() => {
+    makePeerConnection(inputRef.current.value)
+  }, [makePeerConnection])
 
   const userIcon = () => user === 'x' ? ex : circle
 
   return (
     <div>
+      <h2 styleName="player-id">Player: {playerId}</h2>
       {!gameOver && (
         <div styleName="player">
           Player: <span styleName="icon">{userIcon()}</span>
         </div>
       )}
-
       {gameOver && (
         <div styleName="game-over">
           Game Over, winner is <span styleName="icon">{userIcon()}</span>
         </div>
       )}
-
       <div styleName="game">
         {boardState.map(({ id, checked }) => (
           <Item onClick={handleClick} key={id} id={id} checked={lineChecked.includes(id)}>
@@ -166,8 +179,13 @@ const CardsPage: React.FC = () => {
           </Item>
         ))}
       </div>
-      <input ref={inputRef} type="text" />
-      <input type="button" onClick={onPerrClick} value="click to send" />
+      {!peerId && (
+        <React.Fragment>
+          <input ref={inputRef} type="text" />
+          <input type="button" onClick={handlePerrClick} value="click to send" />
+        </React.Fragment>
+      )}
+      ;
     </div>
   )
 }
