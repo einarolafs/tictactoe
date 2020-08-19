@@ -1,6 +1,5 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions, promise/avoid-new */
-import React, { useCallback, useState, useEffect } from 'react'
-// import Peer from 'peerjs'
+import React, { useCallback, useState, useEffect, useRef } from 'react'
 import classcat from 'classcat'
 
 import './cards-page.scss'
@@ -50,18 +49,38 @@ const CardsPage: React.FC = () => {
   const [lineChecked, setLineChecked] = useState<number[]>([0, 0, 0])
   const [gameOver, setGameOver] = useState<boolean>(false)
 
-//  const peer = new Peer()
+  const peerId = useRef<string>()
 
-  /* useEffect(() => {
-    const connection = peer.connect()
+  const peerConnection = useRef<any>()
+  const inputRef = useRef()
 
-    console.log(connection)
+  useEffect(() => {
+    peerConnection.current = new window.Peer()
 
-    connection.on('data', (data) => {
-      // Will print 'hi!'
-      console.log(data)
+    peerConnection.current.on('open', (id: string) => {
+      console.log(id)
+      peerId.current = id
     })
-  }, [peer]) */
+
+    peerConnection.current.on('connection', (conn) => {
+      conn.on('open', function (data) {
+        conn.on('data', function (data) {
+          console.log('Received', data)
+        })
+      })
+    })
+  }, [])
+
+  const onPerrClick = useCallback(() => {
+    const connect = peerConnection.current.connect(inputRef.current.value)
+
+    connect.on('open', function() {
+      // Receive messages
+      connect.send('Hello!')
+    })
+
+    connect.send('Hello!')
+  }, [])
 
   const checkStatus = useCallback(
     (board) => {
@@ -147,6 +166,8 @@ const CardsPage: React.FC = () => {
           </Item>
         ))}
       </div>
+      <input ref={inputRef} type="text" />
+      <input type="button" onClick={onPerrClick} value="click to send" />
     </div>
   )
 }

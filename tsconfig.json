@@ -3,6 +3,10 @@
     "target": "es2020",
     "lib": ["dom", "dom.iterable", "esnext"],
     "baseUrl": ".",
+    "paths": {
+      /* Change below is required for typescript to be able read a custom type file for an NPM package. */
+      "*": ["./@types/*"]
+    },
     "allowJs": true,
     "checkJs": false,
     "skipLibCheck": true,
