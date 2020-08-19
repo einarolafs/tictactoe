@@ -89,7 +89,7 @@ module.exports = {
     'newline-after-var': ['error', 'always'],
     'no-await-in-loop': 'error',
     'no-console': 'off',
-    'no-extra-parens': ['error', 'all', { ignoreJSX: 'all', returnAssign: false, nestedBinaryExpressions: false }],
+    'no-extra-parens': ['off', 'all', { ignoreJSX: 'all', returnAssign: false, nestedBinaryExpressions: false }],
     'no-inline-comments': 'off',
     'no-invalid-this': 'off',
     'no-magic-numbers': 'off',
