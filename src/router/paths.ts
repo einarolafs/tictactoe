@@ -1,6 +1,6 @@
 enum Paths {
-  ROOT = 'ROOT',
-  CARDS = 'CARDS',
+  root = 'root',
+  game = 'game',
 }
 
 type PathsObject = {
@@ -8,8 +8,8 @@ type PathsObject = {
 }
 
 const paths: PathsObject = {
-  ROOT: '/',
-  CARDS: '/cards',
+  root: '/',
+  game: '/game/:playerId?',
 }
 
 export default paths

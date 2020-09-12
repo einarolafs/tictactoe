@@ -11,11 +11,11 @@ interface Routes {
 
 const routes: Routes = {
   root: {
-    path: paths.ROOT,
+    path: paths.root,
     page: Pages.StartPage,
   },
   cards: {
-    path: paths.CARDS,
+    path: paths.game,
     page: Pages.CardsPage,
   },
 }

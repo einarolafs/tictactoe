@@ -1,6 +1,10 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions, promise/avoid-new */
-import React, { useCallback, useState, useEffect, useRef } from 'react'
+import React, { useCallback, useState, useEffect, useRef, SyntheticEvent } from 'react'
+import { withRouter, RouteComponentProps } from 'react-router'
 import classcat from 'classcat'
+
+import { paths } from '../../router'
+import config from '../../config'
 
 import './cards-page.scss'
 
@@ -49,7 +53,7 @@ const getPlayingUser = (remote: boolean, user: User) => {
   return user
 }
 
-const CardsPage: React.FC = () => {
+const CardsPage: React.FC<RouteComponentProps> = ({ match }: RouteComponentProps) => {
   const [boardState, setBoardState] = useState<BoardState[]>(
     new Array(9).fill(null).map((_, index): BoardState => ({ id: index + 1, checked: null }))
   )
@@ -65,9 +69,8 @@ const CardsPage: React.FC = () => {
 
   const peer = useRef<any>()
   const peerConnection = useRef<any>()
-  const inputRef = useRef<HTMLInputElement>()
 
-  const checkStatus = (board: BoardState[], remote: boolean) => {
+  const checkStatus = useCallback((board: BoardState[], remote: boolean) => {
     const rows = [
       [1, 2, 3],
       [4, 5, 6],
@@ -107,49 +110,54 @@ const CardsPage: React.FC = () => {
       setLineChecked(crossChecked)
       setGameOver(currentUser)
     }
-  }
+  }, [])
 
-  const handleClick = (id: number, remote = false) => {
-    const newBoardState = [...boardState]
+  const handleClick = useCallback(
+    (id: number, remote = false) => {
+      const newBoardState = [...boardState]
 
-    if (boardState[id - 1].checked || gameOver || !playerTurn) {
-      return
-    }
+      if (boardState[id - 1].checked || gameOver || !playerTurn) {
+        return
+      }
 
-    newBoardState[id - 1].checked = getPlayingUser(remote, userRef.current)
+      newBoardState[id - 1].checked = getPlayingUser(remote, userRef.current)
 
-    checkStatus(newBoardState, remote)
+      checkStatus(newBoardState, remote)
 
-    setBoardState(newBoardState)
+      setBoardState(newBoardState)
 
-    if (!remote) {
-      peerConnection.current.send({ selected: id })
-      setPlayerTurn(false)
-    }
-  }
-
-  const makePeerConnection = useCallback(
-    (id, player?) => {
-      peerConnection.current = peer.current.connect(id)
-      setPeerId(id)
-
-      peerConnection.current.on('open', () => {
-        peerConnection.current.send({ startGame: true, id: playerId, player })
-      })
+      if (!remote) {
+        peerConnection.current.send({ selected: id })
+        setPlayerTurn(false)
+      }
     },
-    [playerId]
+    [checkStatus, setPlayerTurn, boardState, gameOver, playerTurn]
   )
+
+  const makePeerConnection = useCallback((id, currentPlayerId?, player?) => {
+    peerConnection.current = peer.current.connect(id)
+    setPeerId(id)
+
+    peerConnection.current.on('open', () => {
+      peerConnection.current.send({ startGame: true, id: currentPlayerId, player })
+    })
+  }, [])
 
   useEffect(() => {
     peer.current = new window.Peer()
 
     peer.current.on('open', (id: string) => {
       setPlayerId(id)
+
+      if (match.params.playerId) {
+        makePeerConnection(match.params.playerId, id, user)
+      }
     })
 
     peer.current.on('connection', (conn: any) => {
       conn.on('open', () => {
         conn.on('data', (data: any) => {
+          console.log(data)
           if (data.id) {
             if (data.player) {
               const newCurrentPlayer = data.player === 'x' ? 'o' : 'x'
@@ -168,17 +176,23 @@ const CardsPage: React.FC = () => {
         })
       })
     })
-  }, [])
+  }, [handleClick, makePeerConnection, match.params.playerId, user])
 
-  const handlePeerClick = useCallback(() => {
-    makePeerConnection(inputRef.current!.value, user)
-  }, [makePeerConnection, user])
+  const handleShareClick = useCallback((event: SyntheticEvent) => {
+    event.target.select()
+
+    document.execCommand('copy')
+  }, [])
 
   const userIcon = (icon: User) => (icon === 'x' ? ex : circle)
 
+  const shareLink = playerId && paths.game.replace(':playerId?', playerId)
+
+  const gameClasses = classcat(['game', { disabled: !peerId }])
+
   return (
     <div>
-      <h2 styleName="player-id">Player: {playerId}</h2>
+      {/*  <h2 styleName="player-id">Player: {playerId}</h2> */}
       {!gameOver && (
         <div styleName="player">
           Player: <span styleName="icon">{userIcon(userRef.current)}</span>
@@ -189,22 +203,26 @@ const CardsPage: React.FC = () => {
           Game Over, winner is <span styleName="icon">{userIcon(gameOver as User)}</span>
         </div>
       )}
-      <div styleName="game">
+      <div styleName={gameClasses}>
         {boardState.map(({ id, checked }) => (
           <Item onClick={handleClick} key={id} id={id} checked={lineChecked.includes(id)}>
             {checked ? checked : ''}
           </Item>
         ))}
       </div>
-      {!peerId && (
-        <React.Fragment>
-          <input ref={inputRef} type="text" />
-          <input type="button" onClick={handlePeerClick} value="click to send" />
-        </React.Fragment>
+      {!peerId && !match.params.playerId && (
+        <div styleName="invite">
+          <div>
+            <h2>Share with a friend to start playing</h2>
+            {playerId && <input onClick={handleShareClick} readOnly value={`${config.urls.base}/#${shareLink}`} />}
+            <p>
+              {config.urls.base}/#${shareLink}
+            </p>
+          </div>
+        </div>
       )}
-      ;
     </div>
   )
 }
 
-export default CardsPage
+export default withRouter(CardsPage)
