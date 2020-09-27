@@ -11,7 +11,7 @@ module.exports = () => {
   if (npmEvent.includes('build')) {
     return build({
       ...options,
-      stats: true,
+      stats: false,
     })
   }
 
