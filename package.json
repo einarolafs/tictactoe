@@ -122,7 +122,7 @@
     "last 1 firefox version"
   ],
   "scripts": {
-    "clean": "rm -rf ./build && rm -rf .*cache",
+    "clean": "rm -rf ./docs && rm -rf .*cache && rm -rf ./build",
     "postinstall": "npm run clean",
     "build": "webpack --progress",
     "prestart": "npm run clean",
