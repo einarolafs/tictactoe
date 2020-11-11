@@ -7,7 +7,7 @@ import { State } from '../../store/types'
 import { getCards, addPage, updatePage, changeCardStatus } from '../../store/actions'
 import { cardsByStatus, cardsByKeyValue } from '../../selectors'
 
-import CardsPage from './cards-page'
+import CardsPage from './game-page'
 
 const mapStateToProps = (state: State) => {
   const { filters, dragging } = state.pages?.cards ?? {}
