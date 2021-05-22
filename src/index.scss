@@ -10,7 +10,7 @@ body {
 }
 
 /* stylelint-disable-next-line selector-pseudo-class-no-unknown */
-:global(#root) {
+#root {
   display: flex;
   justify-content: center;
   align-items: center;

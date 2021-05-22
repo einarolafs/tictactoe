@@ -1,14 +1,18 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 import React, { useCallback, useState, useEffect, useRef, SyntheticEvent } from 'react'
 import { withRouter, RouteComponentProps } from 'react-router'
-import classcat from 'classcat'
+import classNamesBind from 'classnames/bind';
 
 import { paths } from './router'
 // import config from '../../config'
 
-import styles from './App.scss'
+import styles from './App.module.scss'
 
-const { DOMAIN } = process.env
+const classNames = classNamesBind.bind(styles);
+
+const { REACT_APP_DOMAIN: DOMAIN } = process.env
+
+console.log(process.env);
 
 interface ItemProps {
   id: number
@@ -25,7 +29,11 @@ const Item: React.FC<ItemProps> = ({ id, onClick, children, checked }: ItemProps
     onClick(id)
   }, [id, onClick])
 
-  const classes = classcat(['item', { checked, [children]: children }])
+  const classes = classNames({
+    'item': true,
+    checked, 
+    [children]: children
+  })
 
   return <span className={classes} onClick={handleClick} />
 }
@@ -201,13 +209,17 @@ const CardsPage: React.FC<RouteComponentProps<MatchParams>> = ({ match }: RouteC
 
   const shareLink = playerId && paths.game.replace(':playerId?', playerId)
 
-  const gameClasses = classcat(['game', { [styles.disabled]: !peerId }])
+
+  const gameClasses = classNames({
+    'game': true, 
+    disabled: !peerId 
+  })
 
   return (
     <div>
       {/*  <h2 styleName="player-id">Player: {playerId}</h2> */}
       {!gameOver && (
-        <div className="player">
+        <div className={styles.player}>
           Player: <span className={styles.icon}>{userIcon(userRef.current)}</span>
         </div>
       )}
@@ -231,9 +243,9 @@ const CardsPage: React.FC<RouteComponentProps<MatchParams>> = ({ match }: RouteC
         <div className={styles.invite}>
           <div>
             <h2>Share with a friend to start playing</h2>
-            {playerId && <input onClick={handleShareClick} readOnly value={`${DOMAIN}/#${shareLink}`} />}
+            {playerId && <input onClick={handleShareClick} readOnly value={`${window.location.protocol}//${DOMAIN}/#${shareLink}`} />}
             <p>
-              {DOMAIN}/#${shareLink}
+              {window.location.protocol}//{DOMAIN}/#{shareLink}
             </p>
           </div>
         </div>
