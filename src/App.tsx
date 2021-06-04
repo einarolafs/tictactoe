@@ -3,10 +3,9 @@ import React, { useCallback, useState, useEffect, useRef, SyntheticEvent } from 
 import { withRouter, RouteComponentProps } from 'react-router'
 import classNamesBind from 'classnames/bind';
 import Peer from 'peerjs';
-import { v4 as uuidv4 } from 'uuid';
 
 import { paths } from './router'
-// import config from '../../config'
+import { ItemProps, User, BoardState, USER, MatchParams } from './type.d'
 
 import styles from './App.module.scss'
 
@@ -14,22 +13,8 @@ const classNames = classNamesBind.bind(styles);
 
 const { REACT_APP_DOMAIN: DOMAIN } = process.env
 
-interface ItemProps {
-  id: number
-  onClick: (id: number) => void
-  children: string
-  checked: boolean
-}
-type User = 'x' | 'o'
-type BoardState = { id: number; checked: User | null }
-
 const CIRCLE = '\u2756'
 const EX = '\u2717'
-
-enum USER {
-  Ex = 'x',
-  Circle = 'o',
-}
 
 const Item: React.FC<ItemProps> = ({ id, onClick, children, checked }: ItemProps) => {
   const handleClick = useCallback(() => {
@@ -47,13 +32,14 @@ const Item: React.FC<ItemProps> = ({ id, onClick, children, checked }: ItemProps
 
 const userIcon = (icon: User) => (icon === USER.Ex ? EX : CIRCLE)
 
+type CheckLineReturn = number[] | false;
 const checkLines = (
   lines: number[][],
   board: BoardState[],
   user: User
-): number[] | boolean => {
+): CheckLineReturn => {
   
-  let foundLine: number[] | boolean = false
+  let foundLine: CheckLineReturn = false
 
   lines.forEach((line) => {
     const isLineChecked = line.every((id) => board[id - 1].checked === user)
@@ -74,8 +60,6 @@ const getPlayingUser = (remote: boolean, user: User) => {
   return user
 }
 
-type MatchParams = { playerId: string }
-
 const CardsPage: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
 
   const [boardState, setBoardState] = useState<BoardState[]>(
@@ -86,16 +70,14 @@ const CardsPage: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
          checked: null,
       }))
   )
+
   const [user, setUser] = useState<User>(USER.Ex)
   const userRef = useRef<User>(USER.Ex)
   const [lineChecked, setLineChecked] = useState<number[]>([0, 0, 0])
   const [gameOver, setGameOver] = useState<User | boolean>(false)
   const [playerTurn, setPlayerTurn] = useState<boolean>(true)
-
   const [playerId, setPlayerId] = useState<string>()
-
   const [peerId, setPeerId] = useState<string>()
-
   const peer = useRef<Peer>()
   const peerConnection = useRef<Peer.DataConnection>()
 
@@ -122,8 +104,6 @@ const CardsPage: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
     const rowChecked = checkLines(rows, board, currentUser)
     const columnChecked = checkLines(columns, board, currentUser)
     const crossChecked = checkLines(cross, board, currentUser)
-
-    // console.log({ rowChecked, columnChecked, crossChecked })
 
     if (rowChecked instanceof Array) {
       setLineChecked(rowChecked)
@@ -154,13 +134,14 @@ const CardsPage: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
       checkStatus(newBoardState, remote)
 
       setBoardState(newBoardState)
-
-      if (!remote && peerConnection.current) {
-        peerConnection.current.send({ selected: id })
+    
+      if (!remote) {
+        console.log('send selection')
+        peerConnection.current?.send({ selected: id })
         setPlayerTurn(false)
       }
     },
-    [checkStatus, setPlayerTurn, boardState, gameOver, playerTurn]
+    [checkStatus, boardState, gameOver, playerTurn]
   )
 
   const makePeerConnection = useCallback((
@@ -171,51 +152,63 @@ const CardsPage: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
     peerConnection.current = peer.current?.connect(remotePlayerId)
     setPeerId(remotePlayerId)
 
-
-    peerConnection.current?.send({ startGame: true, id: playerId, player });
+    peerConnection.current?.on('open', () => {
+      peerConnection.current?.send({ startGame: true, id: playerId, player });
+    })
   }, [])
 
   useEffect(() => {
-    const userId = uuidv4();
-    peer.current = new Peer(userId, {
-      host: 'localhost',
-      port: 9000,
-      path: '/tictactoe'
-    });
+
+    console.log(match);
+
+    peer.current = new Peer();
 
     peer.current?.on('open', (id: string) => {
-      console.log({userId, id});
       setPlayerId(id)
 
-      console.log(id);
-
-      if (match.params.playerId) {
+      if (match.params.playerId && !peerId) {
         makePeerConnection(match.params.playerId, id, user)
       }
     })
 
     peer.current?.on('connection', (conn) => {
       conn.on('open', () => {
-        conn.on('data', (data) => {
-          if (data.id) {
-            if (data.player && !userRef.current) {
+        conn.on('data', (data: {
+          id?: string,
+          player?: string,
+          selected?: number,
+          startGame?: boolean
+        }) => {
+          console.log('on connection', data);
+
+          /* if (data.id && data.startGame) { 
+            makePeerConnection(data.id)
+          } */
+
+          if (data.id && data.startGame) {
               const newCurrentPlayer = data.player === USER.Ex ? USER.Circle : USER.Ex
 
+              // console.log('Setup game from remote connection and set player to false \n')
+
+              //console.log(newCurrentPlayer);
+    
               setUser(newCurrentPlayer)
+              setPeerId(data.id)
               setPlayerTurn(false)
               userRef.current = newCurrentPlayer
-            }
 
-            makePeerConnection(data.id)
+              return;
           }
+  
           if (data.selected) {
+            console.log('set remote selection and set turn as true \n')
             handleClick(data.selected, true)
             setPlayerTurn(true)
           }
         })
-      })
+      });
     })
-  }, [handleClick, makePeerConnection, match.params.playerId, user])
+  }, [])
 
   const handleShareClick = useCallback((event: SyntheticEvent) => {
     let target = event.target as HTMLInputElement;

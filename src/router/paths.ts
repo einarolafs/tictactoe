@@ -1,6 +1,5 @@
 enum Paths {
   root = 'root',
-  //game = 'game',
 }
 
 type PathsObject = {
