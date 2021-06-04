@@ -136,8 +136,12 @@ const CardsPage: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
       setBoardState(newBoardState)
     
       if (!remote) {
-        console.log('send selection')
-        peerConnection.current?.send({ selected: id })
+        if (peerConnection.current) {
+          peerConnection.current.send({ selected: id })
+        } else {
+          throw Error('Could not send move to peer')
+        }
+
         setPlayerTurn(false)
       }
     },
@@ -149,12 +153,22 @@ const CardsPage: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
     playerId?: string,
     player?: User
   ) => {
-    peerConnection.current = peer.current?.connect(remotePlayerId)
-    setPeerId(remotePlayerId)
+    if (peer.current) {
+      peerConnection.current = peer.current.connect(remotePlayerId)
+      setPeerId(remotePlayerId)
 
-    peerConnection.current?.on('open', () => {
-      peerConnection.current?.send({ startGame: true, id: playerId, player });
-    })
+      console.log('make peer connection', peerConnection.current)
+    } else {
+      throw Error('Could not make a peer connection')
+    }
+
+    if (peerConnection.current) {
+      peerConnection.current.on('open', () => {
+        peerConnection.current?.send({ startGame: true, id: playerId, player });
+      })
+    } else {
+      throw Error('Could not open a peer connection')
+    }
   }, [])
 
   useEffect(() => {
@@ -163,7 +177,7 @@ const CardsPage: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
 
     peer.current = new Peer();
 
-    peer.current?.on('open', (id: string) => {
+    peer.current.on('open', (id: string) => {
       setPlayerId(id)
 
       if (match.params.playerId && !peerId) {
@@ -171,7 +185,7 @@ const CardsPage: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
       }
     })
 
-    peer.current?.on('connection', (conn) => {
+    peer.current.on('connection', (conn) => {
       conn.on('open', () => {
         conn.on('data', (data: {
           id?: string,
@@ -181,9 +195,9 @@ const CardsPage: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
         }) => {
           console.log('on connection', data);
 
-          /* if (data.id && data.startGame) { 
+          if (data.id && data.startGame) { 
             makePeerConnection(data.id)
-          } */
+          }
 
           if (data.id && data.startGame) {
               const newCurrentPlayer = data.player === USER.Ex ? USER.Circle : USER.Ex
