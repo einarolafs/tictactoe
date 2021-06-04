@@ -1,0 +1,18 @@
+.container {
+  display: block;
+  margin: 20px;
+}
+
+.text {
+  height: 400px;
+  display: flex;
+  justify-content: space-between;
+
+  textarea {
+    width: 45%;
+  }
+}
+
+.input {
+  width: 300px;
+}

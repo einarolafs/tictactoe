@@ -9,7 +9,7 @@ const Router: React.FC = () => (
       {Object.keys(routes).map((id) => {
         const route = routes[id]
 
-        return <Route exact key={id} route={id} path={route.path} component={route.page} />
+        return <Route exact key={id} path={route.path} component={route.page} />
       })}
     </Switch>
   </HashRouter>

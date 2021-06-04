@@ -1,4 +1,5 @@
-import * as Pages from '../pages'
+import App from '../App'
+import TextComponent from '../text/text'
 
 import paths from './paths'
 
@@ -12,12 +13,8 @@ interface Routes {
 const routes: Routes = {
   root: {
     path: paths.root,
-    page: Pages.StartPage,
-  },
-  cards: {
-    path: paths.game,
-    page: Pages.CardsPage,
-  },
+    page: App,
+  }
 }
 
 export default routes
