@@ -1,55 +1,8 @@
-/* eslint-disable filenames/match-regex */
-const path = require('path')
-
 module.exports = {
-  root: true,
   parser: '@typescript-eslint/parser',
-  env: {
-    browser: true,
-    es6: true,
-    node: true,
-  },
-  globals: {
-    // build environment variables
-    VERSION: false,
-    ENVIRONMENT: false,
-    // jest Global variables
-    render: false,
-    screen: false,
-  },
-  parserOptions: {
-    ecmaVersion: 2020,
-    ecmaFeatures: {
-      jsx: true,
-      generators: true,
-    },
-    sourceType: 'module',
-  },
-  settings: {
-    'import/resolver': {
-      node: {
-        extensions: ['.js', '.ts', '.tsx'],
-      },
-      alias: {
-        map: [['src', path.resolve(__dirname, 'src')]],
-      },
-    },
-  },
-  plugins: [
-    'import',
-    'jsx-a11y',
-    'node',
-    'react',
-    'promise',
-    'filenames',
-    'css-modules',
-    'compat',
-    'react-hooks',
-    '@typescript-eslint',
-    'jest',
-    'prettier',
-  ],
   extends: [
+    'eslint:all',
+    'react-app',
     'eslint:all',
     'plugin:import/errors',
     'plugin:import/warnings',
@@ -64,6 +17,28 @@ module.exports = {
     'prettier/babel',
     'prettier/react',
     'plugin:prettier/recommended',
+  ],
+  globals: {
+    // build environment variables
+    VERSION: false,
+    ENVIRONMENT: false,
+    // jest Global variables
+    render: false,
+    screen: false,
+  },
+  plugins: [
+    'import',
+    'jsx-a11y',
+    'node',
+    'react',
+    'promise',
+    'filenames',
+    'css-modules',
+    'compat',
+    'react-hooks',
+    '@typescript-eslint',
+    'jest',
+    'prettier',
   ],
   rules: {
     // http://eslint.org/docs/rules/

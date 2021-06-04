@@ -15,8 +15,6 @@ module.exports = {
     'stylelint-declaration-block-no-ignored-properties',
     'stylelint-declaration-use-variable',
     'stylelint-high-performance-animation',
-    'stylelint-images',
-    'stylelint-no-indistinguishable-colors',
     'stylelint-no-unsupported-browser-features',
     'stylelint-scss',
   ],
@@ -131,9 +129,6 @@ module.exports = {
     // https://github.com/kristerkari/stylelint-high-performance-animation
     'plugin/no-low-performance-animation-properties': null,
 
-    // https://github.com/ramasilveyra/stylelint-images
-    'images/broken': true,
-    'images/prefer-data-uri': 512,
 
     // https://github.com/ismay/stylelint-no-unsupported-browser-features
     'plugin/no-unsupported-browser-features': [
@@ -143,8 +138,5 @@ module.exports = {
         severity: 'warning',
       },
     ],
-
-    // https://github.com/ierhyna/stylelint-no-indistinguishable-colors
-    'plugin/stylelint-no-indistinguishable-colors': true,
   },
 }
