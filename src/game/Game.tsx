@@ -1,36 +1,26 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions */
-import React, { useCallback, useState, useEffect, useRef, SyntheticEvent } from 'react'
+import React, { useCallback, useState, useEffect, useRef } from 'react'
 import { withRouter, RouteComponentProps } from 'react-router'
 import classNamesBind from 'classnames/bind';
 import Peer from 'peerjs';
 
-import { paths } from '../router'
-import { User, BoardState, USER, MatchParams } from './type.d'
+import { User, BoardState, USER, MatchParams, PeerData, Cells } from './type.d'
 
 import { Item } from './Item';
-import { userIcon, checkLines, getPlayingUser } from './utils'
+import { userIcon, checkLines, getPlayingUser, createBoard, gameCheck } from './utils'
+import Invite from './invite'
 
 import styles from './Game.module.scss'
 
-
 const classNames = classNamesBind.bind(styles);
-
-const { REACT_APP_DOMAIN: DOMAIN } = process.env
 
 const Game: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
 
-  const [boardState, setBoardState] = useState<BoardState[]>(
-    new Array(9)
-      .fill(null)
-      .map((_, index): BoardState => ({
-         id: index + 1,
-         checked: null,
-      }))
-  )
+  const [boardState, setBoardState] = useState<BoardState[]>(createBoard())
 
   const [user, setUser] = useState<User>(USER.Ex)
   const userRef = useRef<User>(USER.Ex)
-  const [lineChecked, setLineChecked] = useState<number[]>([0, 0, 0])
+  const [lineChecked, setLineChecked] = useState<Cells[]>([0, 0, 0])
   const [gameOver, setGameOver] = useState<User | boolean>(false)
   const [playerTurn, setPlayerTurn] = useState<boolean>(true)
   const [playerId, setPlayerId] = useState<string>()
@@ -39,28 +29,11 @@ const Game: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
   const peerConnection = useRef<Peer.DataConnection>()
 
   const checkStatus = useCallback((board: BoardState[], remote: boolean) => {
-    const rows = [
-      [1, 2, 3],
-      [4, 5, 6],
-      [7, 8, 9],
-    ]
-
-    const columns = [
-      [1, 4, 7],
-      [2, 5, 8],
-      [3, 6, 9],
-    ]
-
-    const cross = [
-      [1, 5, 9],
-      [3, 5, 7],
-    ]
-
     const currentUser = getPlayingUser(remote, userRef.current)
 
-    const rowChecked = checkLines(rows, board, currentUser)
-    const columnChecked = checkLines(columns, board, currentUser)
-    const crossChecked = checkLines(cross, board, currentUser)
+    const rowChecked    = checkLines(gameCheck.rows, board, currentUser)
+    const columnChecked = checkLines(gameCheck.columns, board, currentUser)
+    const crossChecked  = checkLines(gameCheck.cross, board, currentUser)
 
     if (rowChecked instanceof Array) {
       setLineChecked(rowChecked)
@@ -79,7 +52,7 @@ const Game: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
   }, [])
 
   const handleClick = useCallback(
-    (id: number, remote = false) => {
+    (id: Cells, remote = false) => {
       const newBoardState = [...boardState]
 
       if (boardState[id - 1].checked || gameOver || !playerTurn) {
@@ -127,7 +100,6 @@ const Game: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
   }, [])
 
   useEffect(() => {
-
     peer.current = new Peer();
 
     peer.current.on('open', (id: string) => {
@@ -140,12 +112,7 @@ const Game: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
 
     peer.current.on('connection', (conn) => {
       conn.on('open', () => {
-        conn.on('data', (data: {
-          id?: string,
-          player?: string,
-          selected?: number,
-          startGame?: boolean
-        }) => {
+        conn.on('data', (data: PeerData) => {
           if (data.id && data.startGame) { 
             makePeerConnection(data.id)
           }
@@ -170,23 +137,10 @@ const Game: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
     })
   }, [])
 
-  const handleShareClick = useCallback((event: SyntheticEvent) => {
-    let target = event.target as HTMLInputElement;
-    target.select()
-
-    document.execCommand('copy')
-  }, [])
-
-  const shareLink = playerId && paths.root.replace(':playerId?', playerId)
-
-  const gameClasses = classNames({
-    'game': true, 
-    disabled: !peerId 
-  })
+  const gameClasses = classNames({'game': true, disabled: !peerId})
 
   return (
     <div>
-      {/*  <h2 styleName="player-id">Player: {playerId}</h2> */}
       {!gameOver && (
         <div className={styles.player}>
           Player: <span className={styles.icon}>{userIcon(userRef.current)}</span>
@@ -208,16 +162,8 @@ const Game: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
           </Item>
         ))}
       </div>
-      {!peerId && !match.params.playerId && (
-        <div className={styles.invite}>
-          <div>
-            <h2>Share with a friend to start playing</h2>
-            {playerId && <input onClick={handleShareClick} readOnly value={`${window.location.protocol}//${DOMAIN}/#${shareLink}`} />}
-            <p>
-              {window.location.protocol}{'//'}{DOMAIN}/#{shareLink}
-            </p>
-          </div>
-        </div>
+      {!peerId && !match.params.playerId && playerId && (
+        <Invite playerId={playerId} />
       )}
     </div>
   )
