@@ -197,6 +197,7 @@ const CardsPage: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
 
           if (data.id && data.startGame) { 
             makePeerConnection(data.id)
+            setPlayerTurn(false)
           }
 
           if (data.id && data.startGame) {

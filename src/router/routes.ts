@@ -1,5 +1,4 @@
 import App from '../App'
-import TextComponent from '../text/text'
 
 import paths from './paths'
 
