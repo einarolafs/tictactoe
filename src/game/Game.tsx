@@ -2,7 +2,6 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react'
 import { withRouter, RouteComponentProps } from 'react-router'
 import classNamesBind from 'classnames/bind';
-import Peer from 'peerjs';
 
 import { User, BoardState, USER, MatchParams, PeerData, Cells } from './type.d'
 
@@ -11,6 +10,7 @@ import { userIcon, checkLines, getPlayingUser, createBoard, gameCheck } from './
 import Invite from './invite'
 
 import styles from './Game.module.scss'
+import { PeerConnection } from './peer.connection';
 
 const classNames = classNamesBind.bind(styles);
 
@@ -25,8 +25,7 @@ const Game: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
   const [playerTurn, setPlayerTurn] = useState<boolean>(true)
   const [playerId, setPlayerId] = useState<string>()
   const [peerId, setPeerId] = useState<string>()
-  const peer = useRef<Peer>()
-  const peerConnection = useRef<Peer.DataConnection>()
+  const peer = useRef<PeerConnection>()
 
   const checkStatus = useCallback((board: BoardState[], remote: boolean) => {
     const currentUser = getPlayingUser(remote, userRef.current)
@@ -66,74 +65,54 @@ const Game: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
       setBoardState(newBoardState)
     
       if (!remote) {
-        if (peerConnection.current) {
-          peerConnection.current.send({ selected: id })
-        } else {
-          throw Error('Could not send move to peer')
-        }
+          console.log('send data')
+          peer.current?.sendData({ selected: id })
 
-        setPlayerTurn(false)
+          setPlayerTurn(false)
       }
     },
     [checkStatus, boardState, gameOver, playerTurn]
   )
 
-  const makePeerConnection = useCallback((
-    remotePlayerId: string,
-    playerId?: string,
-    player?: User
-  ) => {
-    if (peer.current) {
-      peerConnection.current = peer.current.connect(remotePlayerId)
-      setPeerId(remotePlayerId)
-    } else {
-      throw Error('Could not make a peer connection')
-    }
-
-    if (peerConnection.current) {
-      peerConnection.current.on('open', () => {
-        peerConnection.current?.send({ startGame: true, id: playerId, player });
-      })
-    } else {
-      throw Error('Could not open a peer connection')
-    }
-  }, [])
-
   useEffect(() => {
-    peer.current = new Peer();
+    peer.current = new PeerConnection();
+    let currentId: string;
+    let currentPeerId: string
 
-    peer.current.on('open', (id: string) => {
-      setPlayerId(id)
-
-      if (match.params.playerId && !peerId) {
-        makePeerConnection(match.params.playerId, id, user)
+    peer.current.onOpenConnection.subscribe((id) => {
+      currentId = id
+      setPlayerId(id);
+      if (match.params.playerId && !currentPeerId) {
+        peer.current?.makePeerConnection(match.params.playerId)
       }
     })
 
-    peer.current.on('connection', (conn) => {
-      conn.on('open', () => {
-        conn.on('data', (data: PeerData) => {
-          if (data.id && data.startGame) { 
-            makePeerConnection(data.id)
-          }
+    peer.current.onPeerConnection.subscribe(() => {
+      console.log('on peer connecton');
+      peer.current?.sendData({startGame: true, id: currentId, player: user})
+    })
 
-          if (data.id && data.startGame) {
-              const newCurrentPlayer = data.player === USER.Ex ? USER.Circle : USER.Ex
-    
-              setUser(newCurrentPlayer)
-              setPeerId(data.id)
-              setPlayerTurn(false)
-              userRef.current = newCurrentPlayer
+    peer.current.onData.subscribe((data) => {
+      console.log('on data');
+      const playerData = data as PeerData;
 
-              return;
-          }
-  
-          if (data.selected) {
-            handleClick(data.selected, true)
-            setPlayerTurn(true)
-          }
-        })
-      });
+      if (playerData.id && playerData.startGame) { 
+        peer.current?.makePeerConnection(playerData.id)
+        const newCurrentPlayer = playerData.player === USER.Ex ? USER.Circle : USER.Ex
+
+        setUser(newCurrentPlayer)
+        setPeerId(playerData.id)
+        currentPeerId = playerData.id;
+        setPlayerTurn(false)
+        userRef.current = newCurrentPlayer
+
+        return;
+      }
+
+      if (playerData.selected) {
+        handleClick(playerData.selected, true)
+        setPlayerTurn(true)
+      }
     })
   }, [])
 
