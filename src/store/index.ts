@@ -1,9 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit'
-import userSlice, { userReducer } from './userSlice'
+import peerSlice from './peerSlice'
+import userSlice from './userSlice'
+import boardSlice from './boardSlice'
 
 const store = configureStore({
   reducer: {
-    user: userReducer,
+    user: userSlice.reducer,
+    peer: peerSlice.reducer,
+    board: boardSlice.reducer,
   },
   devTools: true
 })
@@ -13,5 +17,7 @@ export type RootState = ReturnType<typeof store.getState>
 export default store
 
 export {
-  userSlice
+  userSlice,
+  peerSlice,
+  boardSlice,
 }

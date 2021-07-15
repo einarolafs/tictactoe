@@ -2,14 +2,16 @@
 import React, { useCallback, useState, useEffect, useRef, SyntheticEvent } from 'react'
 import { withRouter, RouteComponentProps } from 'react-router'
 import { useSelector, useDispatch } from 'react-redux'
-import { RootState, userSlice } from '../../store'
+
 import classNamesBind from 'classnames/bind';
 import Peer from 'peerjs';
 
 import { paths } from '../../router'
+import { RootState, userSlice, peerSlice, boardSlice } from '../../store'
 import { User, BoardState, USER, MatchParams } from '../../type.d'
 import { checkLines, getPlayingUser, userIcon } from '../../utils';
 import Item from '../item';
+import { rows, columns, cross } from './utils';
 
 import styles from './Board.module.scss'
 
@@ -18,47 +20,22 @@ const classNames = classNamesBind.bind(styles);
 const { REACT_APP_DOMAIN: DOMAIN } = process.env
 
 const Board: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
-  const {id: playerId, role: user} = useSelector((state: RootState) => state.user)
+  const {id: playerId, role: user = USER.Ex} = useSelector((state: RootState) => state.user)
+
+  const {id: peerId} = useSelector((state: RootState) => state.peer)
+
+ const { board } = useSelector((state: RootState) => state.board)
+
   const dispatch = useDispatch();
 
-  const [boardState, setBoardState] = useState<BoardState[]>(
-    new Array(9)
-      .fill(null)
-      .map((_, index): BoardState => ({
-         id: index + 1,
-         checked: null,
-      }))
-  )
-
-  // const [user, setUser] = useState<User>(USER.Ex)
-  const userRef = useRef<User>(USER.Ex)
   const [lineChecked, setLineChecked] = useState<number[]>([0, 0, 0])
   const [gameOver, setGameOver] = useState<User | boolean>(false)
   const [playerTurn, setPlayerTurn] = useState<boolean>(true)
-  // const [playerId, setPlayerId] = useState<string>()
-  const [peerId, setPeerId] = useState<string>()
   const peer = useRef<Peer>()
   const peerConnection = useRef<Peer.DataConnection>()
 
   const checkStatus = useCallback((board: BoardState[], remote: boolean) => {
-    const rows = [
-      [1, 2, 3],
-      [4, 5, 6],
-      [7, 8, 9],
-    ]
-
-    const columns = [
-      [1, 4, 7],
-      [2, 5, 8],
-      [3, 6, 9],
-    ]
-
-    const cross = [
-      [1, 5, 9],
-      [3, 5, 7],
-    ]
-
-    const currentUser = getPlayingUser(remote, userRef.current)
+    const currentUser = getPlayingUser(remote, user)
 
     const rowChecked = checkLines(rows, board, currentUser)
     const columnChecked = checkLines(columns, board, currentUser)
@@ -82,17 +59,17 @@ const Board: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
 
   const handleClick = useCallback(
     (id: number, remote = false) => {
-      const newBoardState = [...boardState]
+      const newBoardState = board.map(item => ({...item}))
 
-      if (boardState[id - 1].checked || gameOver || !playerTurn) {
+      if (board[id - 1].checked || gameOver || !playerTurn) {
         return
       }
 
-      newBoardState[id - 1].checked = getPlayingUser(remote, userRef.current)
+      newBoardState[id - 1].checked = getPlayingUser(remote, user)
 
       checkStatus(newBoardState, remote)
 
-      setBoardState(newBoardState)
+      dispatch(boardSlice.actions.setBoard(newBoardState))
     
       if (!remote) {
         if (peerConnection.current) {
@@ -104,7 +81,7 @@ const Board: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
         setPlayerTurn(false)
       }
     },
-    [checkStatus, boardState, gameOver, playerTurn]
+    [checkStatus, board, gameOver, playerTurn, dispatch, user]
   )
 
   const makePeerConnection = useCallback((
@@ -113,33 +90,34 @@ const Board: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
     player?: User
   ) => {
     if (peer.current) {
-      peerConnection.current = peer.current.connect(remotePlayerId)
-      setPeerId(remotePlayerId)
 
-      console.log('make peer connection', peerConnection.current)
+      peerConnection.current = peer.current.connect(remotePlayerId)
+
+      dispatch(peerSlice.actions.setPeer({ id: remotePlayerId }));
+
     } else {
       throw Error('Could not make a peer connection')
     }
 
     if (peerConnection.current) {
+
       peerConnection.current.on('open', () => {
         peerConnection.current?.send({ startGame: true, id: playerId, player });
       })
+
     } else {
       throw Error('Could not open a peer connection')
     }
-  }, [])
+  }, [dispatch])
 
   useEffect(() => {
-
-    console.log(match);
-
     peer.current = new Peer();
 
     peer.current.on('open', (id: string) => {
       dispatch(userSlice.actions.setUser({ id }));
 
       if (match.params.playerId && !peerId) {
+        dispatch(userSlice.actions.setUser({role: USER.Circle}))
         makePeerConnection(match.params.playerId, id, user)
       }
     })
@@ -152,30 +130,19 @@ const Board: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
           selected?: number,
           startGame?: boolean
         }) => {
-          console.log('on connection', data);
-
           if (data.id && data.startGame) { 
             makePeerConnection(data.id)
             setPlayerTurn(false)
           }
 
           if (data.id && data.startGame) {
-              const newCurrentPlayer = data.player === USER.Ex ? USER.Circle : USER.Ex
-
-              // console.log('Setup game from remote connection and set player to false \n')
-
-              //console.log(newCurrentPlayer);
-    
-              dispatch(userSlice.actions.setUser({role: newCurrentPlayer}))
-              setPeerId(data.id)
+              dispatch(peerSlice.actions.setPeer({ id: data.id }));
               setPlayerTurn(false)
-              userRef.current = newCurrentPlayer
 
               return;
           }
   
           if (data.selected) {
-            console.log('set remote selection and set turn as true \n')
             handleClick(data.selected, true)
             setPlayerTurn(true)
           }
@@ -203,7 +170,7 @@ const Board: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
       {/*  <h2 styleName="player-id">Player: {playerId}</h2> */}
       {!gameOver && (
         <div className={styles.player}>
-          Player: <span className={styles.icon}>{userIcon(userRef.current)}</span>
+          Player: <span className={styles.icon}>{userIcon(user)}</span>
         </div>
       )}
       {gameOver && (
@@ -212,7 +179,7 @@ const Board: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
         </div>
       )}
       <div className={gameClasses}>
-        {boardState.map(({ id, checked }) => (
+        {board.map(({ id, checked }) => (
           <Item 
             onClick={handleClick} 
             key={id} 
