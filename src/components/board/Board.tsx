@@ -2,13 +2,11 @@
 import React, { useCallback, useState, useEffect, useRef, SyntheticEvent } from 'react'
 import { withRouter, RouteComponentProps } from 'react-router'
 import { useSelector, useDispatch } from 'react-redux'
-
 import classNamesBind from 'classnames/bind';
 import Peer from 'peerjs';
 
-import { paths } from '../../router'
 import { RootState, userSlice, peerSlice, boardSlice } from '../../store'
-import { User, BoardState, USER, MatchParams } from '../../type.d'
+import { User, BoardState, USER } from '../../type.d'
 import { checkLines, getPlayingUser, userIcon } from '../../utils';
 import Item from '../item';
 import { rows, columns, cross } from './utils';
@@ -19,7 +17,7 @@ const classNames = classNamesBind.bind(styles);
 
 const { REACT_APP_DOMAIN: DOMAIN } = process.env
 
-const Board: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
+const Board: React.FC<{sharedId?: string}> = ({ sharedId }) => {
   const {id: playerId, role: user = USER.Ex} = useSelector((state: RootState) => state.user)
 
   const {id: peerId} = useSelector((state: RootState) => state.peer)
@@ -116,9 +114,8 @@ const Board: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
     peer.current.on('open', (id: string) => {
       dispatch(userSlice.actions.setUser({ id }));
 
-      if (match.params.playerId && !peerId) {
-        dispatch(userSlice.actions.setUser({role: USER.Circle}))
-        makePeerConnection(match.params.playerId, id, user)
+      if (sharedId && !peerId) {
+        makePeerConnection(sharedId, id, user)
       }
     })
 
@@ -151,15 +148,6 @@ const Board: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
     })
   }, [])
 
-  const handleShareClick = useCallback((event: SyntheticEvent) => {
-    let target = event.target as HTMLInputElement;
-    target.select()
-
-    document.execCommand('copy')
-  }, [])
-
-  const shareLink = playerId && paths.root.replace(':playerId?', playerId)
-
   const gameClasses = classNames({
     'game': true, 
     disabled: !peerId 
@@ -167,7 +155,7 @@ const Board: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
 
   return (
     <div>
-      {/*  <h2 styleName="player-id">Player: {playerId}</h2> */}
+      <h2 className="player-id">Player: {playerId}</h2>
       {!gameOver && (
         <div className={styles.player}>
           Player: <span className={styles.icon}>{userIcon(user)}</span>
@@ -189,19 +177,8 @@ const Board: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
           />
         ))}
       </div>
-      {!peerId && !match.params.playerId && (
-        <div className={styles.invite}>
-          <div>
-            <h2>Share with a friend to start playing</h2>
-            {playerId && <input onClick={handleShareClick} readOnly value={`${window.location.protocol}//${DOMAIN}/#${shareLink}`} />}
-            <p>
-              {window.location.protocol}{'//'}{DOMAIN}/#{shareLink}
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
 
-export default withRouter(Board)
+export default Board
