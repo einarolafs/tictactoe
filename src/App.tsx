@@ -1,11 +1,15 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions */
 import React, { useCallback, useState, useEffect, useRef, SyntheticEvent } from 'react'
 import { withRouter, RouteComponentProps } from 'react-router'
+import { useSelector, useDispatch } from 'react-redux'
+import { RootState, userSlice } from './store'
 import classNamesBind from 'classnames/bind';
 import Peer from 'peerjs';
 
 import { paths } from './router'
-import { ItemProps, User, BoardState, USER, MatchParams } from './type.d'
+import { User, BoardState, USER, MatchParams } from './type.d'
+
+import Item from './components/item';
 
 import styles from './App.module.scss'
 
@@ -15,20 +19,6 @@ const { REACT_APP_DOMAIN: DOMAIN } = process.env
 
 const CIRCLE = '\u2756'
 const EX = '\u2717'
-
-const Item: React.FC<ItemProps> = ({ id, onClick, children, checked }: ItemProps) => {
-  const handleClick = useCallback(() => {
-    onClick(id)
-  }, [id, onClick])
-
-  const classes = classNames({
-    'item': true,
-    checked, 
-    [children]: children
-  })
-
-  return <span className={classes} onClick={handleClick} />
-}
 
 const userIcon = (icon: User) => (icon === USER.Ex ? EX : CIRCLE)
 
@@ -61,6 +51,10 @@ const getPlayingUser = (remote: boolean, user: User) => {
 }
 
 const CardsPage: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
+  const userStore = useSelector((state: RootState) => state.user)
+  const dispatch = useDispatch();
+
+  console.log({ userStore })
 
   const [boardState, setBoardState] = useState<BoardState[]>(
     new Array(9)
@@ -179,6 +173,7 @@ const CardsPage: React.FC<RouteComponentProps<MatchParams>> = ({ match }) => {
 
     peer.current.on('open', (id: string) => {
       setPlayerId(id)
+      dispatch(userSlice.actions.setUser({ id }));
 
       if (match.params.playerId && !peerId) {
         makePeerConnection(match.params.playerId, id, user)
