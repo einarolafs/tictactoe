@@ -6,16 +6,14 @@ import styles from './Item.module.scss'
 
 const classNames = classNamesBind.bind(styles);
 
-const Item: React.FC<ItemProps> = ({ id, onClick, children, checked }: ItemProps) => {
-  const handleClick = useCallback(() => {
-    onClick(id)
-  }, [id, onClick])
-
+const Item: React.FC<ItemProps> = ({ id, onClick, selection, checked }: ItemProps) => {
   const classes = classNames({
     'item': true,
     checked, 
-    [children]: children
+    [selection as string]: selection
   })
+  
+  const handleClick = () => onClick(id);
 
   return <span className={classes} onClick={handleClick} />
 }
