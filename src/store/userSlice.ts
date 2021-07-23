@@ -4,11 +4,13 @@ import { User } from '../type.d';
 interface UserState {
   id?: string
   role?: User
+  active: boolean
 }
 
 const initialState: UserState = {
   id: undefined,
   role: undefined,
+  active: true,
 }
 
 export const userSlice = createSlice({
@@ -18,6 +20,7 @@ export const userSlice = createSlice({
     setUser: (state, { payload }) => {
       state.id = payload.id || state.id;
       state.role = payload.role || state.role;
+      state.active = payload.active || state.active;
     },
   },
 })

@@ -14,3 +14,10 @@ export enum USER {
 }
 
 export type MatchParams = { playerId: string }
+
+export interface PeerData {
+  id?: string,
+  player?: string,
+  selected?: number,
+  startGame?: boolean
+}

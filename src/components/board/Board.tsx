@@ -1,34 +1,28 @@
 /* eslint-disable jsx-a11y/no-static-element-interactions */
-import React, { useCallback, useState, useEffect, useRef, SyntheticEvent } from 'react'
-import { withRouter, RouteComponentProps } from 'react-router'
+import React, { useCallback, useState, useEffect, useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import classNamesBind from 'classnames/bind';
 import Peer from 'peerjs';
 
 import { RootState, userSlice, peerSlice, boardSlice } from '../../store'
-import { User, BoardState, USER } from '../../type.d'
-import { checkLines, getPlayingUser, userIcon } from '../../utils';
+import { User, BoardState, USER, PeerData } from '../../type.d'
+import { checkLines, getPlayingUser } from '../../utils';
 import Item from '../item';
 import { rows, columns, cross } from './utils';
 
 import styles from './Board.module.scss'
+import { BoardHeader } from './board-header';
 
 const classNames = classNamesBind.bind(styles);
 
-const { REACT_APP_DOMAIN: DOMAIN } = process.env
-
 const Board: React.FC<{sharedId?: string}> = ({ sharedId }) => {
-  const {id: playerId, role: user = USER.Ex} = useSelector((state: RootState) => state.user)
-
-  const {id: peerId} = useSelector((state: RootState) => state.peer)
-
- const { board } = useSelector((state: RootState) => state.board)
-
   const dispatch = useDispatch();
 
-  const [lineChecked, setLineChecked] = useState<number[]>([0, 0, 0])
-  const [gameOver, setGameOver] = useState<User | boolean>(false)
-  const [playerTurn, setPlayerTurn] = useState<boolean>(true)
+  const {id: playerId, role: user = USER.Ex, active } = useSelector((state: RootState) => state.user)
+  const peerInfo = useSelector((state: RootState) => state.peer)
+  const { board, lineChecked } = useSelector((state: RootState) => state.board)
+
+  const [gameOver, setGameOver] = useState<User>()
   const peer = useRef<Peer>()
   const peerConnection = useRef<Peer.DataConnection>()
 
@@ -40,132 +34,125 @@ const Board: React.FC<{sharedId?: string}> = ({ sharedId }) => {
     const crossChecked = checkLines(cross, board, currentUser)
 
     if (rowChecked instanceof Array) {
-      setLineChecked(rowChecked)
+      dispatch(boardSlice.actions.setLineChecked(rowChecked))
       setGameOver(currentUser)
     }
 
     if (columnChecked instanceof Array) {
-      setLineChecked(columnChecked)
+      dispatch(boardSlice.actions.setLineChecked(columnChecked))
       setGameOver(currentUser)
     }
 
     if (crossChecked instanceof Array) {
-      setLineChecked(crossChecked)
+      dispatch(boardSlice.actions.setLineChecked(crossChecked))
       setGameOver(currentUser)
     }
-  }, [])
+  }, [dispatch, user])
 
   const handleClick = useCallback(
     (id: number, remote = false) => {
       const newBoardState = board.map(item => ({...item}))
 
-      if (board[id - 1].checked || gameOver || !playerTurn) {
-        return
-      }
+      if (board[id - 1].checked || gameOver || !active) { return }
 
       newBoardState[id - 1].checked = getPlayingUser(remote, user)
 
       checkStatus(newBoardState, remote)
 
-      dispatch(boardSlice.actions.setBoard(newBoardState))
-    
-      if (!remote) {
-        if (peerConnection.current) {
-          peerConnection.current.send({ selected: id })
-        } else {
-          throw Error('Could not send move to peer')
-        }
+      dispatch(boardSlice.actions.setBoard({index: id - 1, player: getPlayingUser(remote, user)}))
 
-        setPlayerTurn(false)
+      try {
+        if (!remote) {
+          if (peerConnection.current) {
+            peerConnection.current.send({ selected: id } as PeerData)
+          } else {
+            throw Error('Could not send move to peer')
+          }
+
+          dispatch(userSlice.actions.setUser({ active: false }))
+        }
+      } catch (error) {
+        console.error(error)
       }
     },
-    [checkStatus, board, gameOver, playerTurn, dispatch, user]
+    [checkStatus, board, gameOver, active, dispatch, user]
   )
 
-  const makePeerConnection = useCallback((
-    remotePlayerId: string,
-    playerId?: string,
-    player?: User
-  ) => {
-    if (peer.current) {
+  const makePeerConnection = useCallback((remotePlayerId: string, id?: string) => {
+    try {
+      if (peer.current) {
 
-      peerConnection.current = peer.current.connect(remotePlayerId)
+        peerConnection.current = peer.current.connect(remotePlayerId)
 
-      dispatch(peerSlice.actions.setPeer({ id: remotePlayerId }));
+        dispatch(peerSlice.actions.setPeer({ id: remotePlayerId }));
 
-    } else {
-      throw Error('Could not make a peer connection')
+      } else {
+        throw Error('Could not make a peer connection')
+      }
+
+      if (peerConnection.current && id && sharedId) {
+
+        peerConnection.current.on('open', () => {
+          peerConnection.current?.send({ startGame: true, id } as PeerData);
+        })
+
+      } else {
+        throw Error('Could not send data to the peer')
+      }
+    }  catch (error) {
+      console.error(error)
     }
-
-    if (peerConnection.current) {
-
-      peerConnection.current.on('open', () => {
-        peerConnection.current?.send({ startGame: true, id: playerId, player });
-      })
-
-    } else {
-      throw Error('Could not open a peer connection')
-    }
-  }, [dispatch])
+  }, [dispatch, sharedId])
 
   useEffect(() => {
-    peer.current = new Peer();
+    try {
+      peer.current = new Peer();
 
-    peer.current.on('open', (id: string) => {
-      dispatch(userSlice.actions.setUser({ id }));
+      peer.current.on('open', (id: string) => {
+        dispatch(userSlice.actions.setUser({ id }));
 
-      if (sharedId && !peerId) {
-        makePeerConnection(sharedId, id, user)
-      }
-    })
+        if (sharedId && !peerInfo.id) {
+          makePeerConnection(sharedId, id)
+          dispatch(userSlice.actions.setUser({ role: USER.Circle }))
+          dispatch(peerSlice.actions.setPeer({ role: USER.Ex }))
+          return
+        }
+    
+        dispatch(userSlice.actions.setUser({ role: USER.Ex }))
+        dispatch(peerSlice.actions.setPeer({ role: USER.Circle }))
+      })
 
-    peer.current.on('connection', (conn) => {
-      conn.on('open', () => {
-        conn.on('data', (data: {
-          id?: string,
-          player?: string,
-          selected?: number,
-          startGame?: boolean
-        }) => {
-          if (data.id && data.startGame) { 
-            makePeerConnection(data.id)
-            setPlayerTurn(false)
-          }
-
-          if (data.id && data.startGame) {
-              dispatch(peerSlice.actions.setPeer({ id: data.id }));
-              setPlayerTurn(false)
+      peer.current.on('connection', (conn) => {
+        conn.on('open', () => {
+          conn.on('data', (data: PeerData) => {
+            if (data.id && data.startGame) { 
+              makePeerConnection(data.id, playerId)
+              dispatch(userSlice.actions.setUser({ active: false }))
+              dispatch(peerSlice.actions.setPeer({ id: data.id }))
 
               return;
-          }
-  
-          if (data.selected) {
-            handleClick(data.selected, true)
-            setPlayerTurn(true)
-          }
-        })
-      });
-    })
+            }
+    
+            if (data.selected) {
+              handleClick(data.selected, true)
+              dispatch(userSlice.actions.setUser({ active: true }))
+            }
+          })
+        });
+      })
+    } catch (error) {
+      console.error(error)
+    }
   }, [])
 
   const gameClasses = classNames({
     'game': true, 
-    disabled: !peerId 
+    disabled: !peerInfo.id
   })
 
   return (
     <div>
-      <h2 className="player-id">Player: {playerId}</h2>
-      {!gameOver && (
-        <div className={styles.player}>
-          Player: <span className={styles.icon}>{userIcon(user)}</span>
-        </div>
-      )}
-      {gameOver && (
-        <div className={styles["game-over"]}>
-          Game Over, winner is <span className={styles.icon}>{userIcon(gameOver as User)}</span>
-        </div>
-      )}
+      <BoardHeader gameOver={gameOver} />
       <div className={gameClasses}>
         {board.map(({ id, checked }) => (
           <Item 
