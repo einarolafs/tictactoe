@@ -1,0 +1,20 @@
+/* stylelint-disable a11y/media-prefers-reduced-motion */
+@import "./color.scss";
+
+$size: 500px;
+
+h1 {
+  text-align: center;
+}
+
+.start {
+  display: flex;
+  flex-direction: column;
+  width: $size;
+  height: $size;
+
+  input {
+    padding: 10px 5px;
+    margin-bottom: 20px;
+  }
+}

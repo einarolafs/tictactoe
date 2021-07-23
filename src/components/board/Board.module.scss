@@ -1,0 +1,19 @@
+/* stylelint-disable a11y/media-prefers-reduced-motion */
+@import "../../color.scss";
+
+$size: 500px;
+
+.game {
+  display: grid;
+  width: $size;
+  height: $size;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  border: 1px solid;
+  background: $white;
+  box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.3);
+
+  &.disabled {
+    opacity: 0.3;
+  }
+}
